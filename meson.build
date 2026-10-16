@@ -13,6 +13,9 @@ if arch == 'aarch64'
 	arch = 'arm64'
 endif
 
+# Haiku's private headers, in the cross file's sys_root when cross-building
+private_headers = meson.get_external_property('sys_root', '') + '/boot/system/develop/headers/private'
+
 wlserverdep    = dependency('wayland-server')
 wlprotocolsdep = dependency('wayland-protocols')
 
@@ -119,10 +122,10 @@ shared_library('wayland-server-inproc',
 	],
 	name_prefix: '',
 	include_directories: [
-		'/boot/system/develop/headers/private/shared',
-		'/boot/system/develop/headers/private/interface',
-		'/boot/system/develop/headers/private/system',
-		'/boot/system/develop/headers/private/system/arch/' + arch,
+		private_headers / 'shared',
+		private_headers / 'interface',
+		private_headers / 'system',
+		private_headers / 'system/arch' / arch,
 	],
 	dependencies: [
 		cpp.find_library('be'),
