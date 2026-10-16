@@ -13,6 +13,7 @@
 
 #include <Window.h>
 #include <Screen.h>
+#include "HaikuOutput.h"
 
 #include <cmath>
 #include <algorithm>
@@ -37,6 +38,7 @@ public:
 	void WindowActivated(bool isActive) final;
 	void WorkspacesChanged(uint32 oldWorkspace, uint32 newWorkspace) final;
 	void FrameResized(float newWidth, float newHeight) final;
+	void ScreenChanged(BRect frame, color_space mode) final;
 	void DispatchMessage(BMessage *msg, BHandler *target) final;
 };
 
@@ -71,6 +73,13 @@ void WaylandWindow::WindowActivated(bool isActive)
 void WaylandWindow::WorkspacesChanged(uint32 oldWorkspace, uint32 newWorkspace)
 {
 	UpdateRefreshRate();
+}
+
+void WaylandWindow::ScreenChanged(BRect frame, color_space mode)
+{
+	// the resolution or the scale of the desktop changed
+	WaylandEnv vlEnv(this);
+	HaikuOutputsUpdate();
 }
 
 void WaylandWindow::FrameResized(float newWidth, float newHeight)
@@ -276,6 +285,7 @@ HaikuXdgToplevel *HaikuXdgToplevel::Create(HaikuXdgSurface *xdgSurface, uint32_t
 	xdgToplevel->fXdgSurface = xdgSurface;
 	xdgToplevel->fWindow = new WaylandWindow(xdgToplevel, BRect(), "", B_NO_BORDER_WINDOW_LOOK, B_NORMAL_WINDOW_FEEL, 0);
 	xdgSurface->fSurface->AttachWindow(xdgToplevel->fWindow);
+	HaikuOutputsEnter(xdgSurface->fSurface);
 
 	return xdgToplevel;
 }
