@@ -241,14 +241,19 @@ void WaylandView::Draw(BRect dirty)
 		const int32_t scale = fSurface->BufferScale();
 		BRect bitmapRect = bmp->Bounds();
 		BRect viewRect(0, 0, (bitmapRect.Width() + 1) / scale - 1, (bitmapRect.Height() + 1) / scale - 1);
+		// wp_viewporter: without a source the whole buffer is shown,
+		// without a destination the surface is as large as the source
 		const auto &viewportSrc = fSurface->fState.viewportSrc;
 		const auto &viewportDst = fSurface->fState.viewportDst;
-		if (viewportSrc.IsValid() && viewportDst.IsValid()) {
-			// the source is in surface coordinates, before the buffer scale
+		if (viewportSrc.IsValid()) {
+			// in surface coordinates, before the buffer scale
 			bitmapRect = BRect(viewportSrc.x * scale, viewportSrc.y * scale, (viewportSrc.x + viewportSrc.width) * scale - 1, (viewportSrc.y + viewportSrc.height) * scale - 1);
-			viewRect = BRect(0, 0, viewportDst.width - 1, viewportDst.height - 1);
+			viewRect = BRect(0, 0, viewportSrc.width - 1, viewportSrc.height - 1);
 		}
-		const uint32 options = scale > 1 || (viewportSrc.IsValid() && viewportDst.IsValid()) ? B_FILTER_BITMAP_BILINEAR : 0;
+		if (viewportDst.IsValid())
+			viewRect = BRect(0, 0, viewportDst.width - 1, viewportDst.height - 1);
+		const bool scaled = bitmapRect.Width() != viewRect.Width() || bitmapRect.Height() != viewRect.Height();
+		const uint32 options = scaled ? B_FILTER_BITMAP_BILINEAR : 0;
 		if (mode == B_OP_ALPHA && fSurface->fState.opaqueRgn.has_value()) {
 			viewLocked->ConstrainClippingRegion(&fSurface->fState.opaqueRgn.value());
 			viewLocked->SetDrawingMode(B_OP_COPY);
@@ -312,6 +317,9 @@ BSize HaikuSurface::Size() const
 {
 	if (fState.viewportDst.IsValid()) {
 		return BSize(fState.viewportDst.width - 1, fState.viewportDst.height - 1);
+	}
+	if (fState.viewportSrc.IsValid()) {
+		return BSize(fState.viewportSrc.width - 1, fState.viewportSrc.height - 1);
 	}
 	if (Bitmap() != NULL) {
 		const int32_t scale = BufferScale();
