@@ -32,6 +32,11 @@ public:
 	void HandleSetContentType(uint32_t hint, uint32_t purpose) final;
 	void HandleSetCursorRectangle(int32_t x, int32_t y, int32_t width, int32_t height) final;
 	void HandleCommit() final;
+	// text-input-unstable-v3 requests of newer wayland-protocols (1.49
+	// here): nothing to do for them (not "override", for older protocols)
+	virtual void HandleSetAvailableActions(struct wl_array *available_actions) {}
+	virtual void HandleShowInputPanel() {}
+	virtual void HandleHideInputPanel() {}
 };
 
 
