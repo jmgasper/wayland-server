@@ -235,24 +235,30 @@ void WaylandView::Draw(BRect dirty)
 				mode = B_OP_COPY;
 				break;
 		}
+		// A buffer drawn at a higher density (wl_surface.set_buffer_scale)
+		// covers its size divided by the scale: filtered down where the
+		// desktop's density is lower, one to one where it is the same.
+		const int32_t scale = fSurface->BufferScale();
+		BRect bitmapRect = bmp->Bounds();
+		BRect viewRect(0, 0, (bitmapRect.Width() + 1) / scale - 1, (bitmapRect.Height() + 1) / scale - 1);
+		const auto &viewportSrc = fSurface->fState.viewportSrc;
+		const auto &viewportDst = fSurface->fState.viewportDst;
+		if (viewportSrc.IsValid() && viewportDst.IsValid()) {
+			// the source is in surface coordinates, before the buffer scale
+			bitmapRect = BRect(viewportSrc.x * scale, viewportSrc.y * scale, (viewportSrc.x + viewportSrc.width) * scale - 1, (viewportSrc.y + viewportSrc.height) * scale - 1);
+			viewRect = BRect(0, 0, viewportDst.width - 1, viewportDst.height - 1);
+		}
+		const uint32 options = scale > 1 || (viewportSrc.IsValid() && viewportDst.IsValid()) ? B_FILTER_BITMAP_BILINEAR : 0;
 		if (mode == B_OP_ALPHA && fSurface->fState.opaqueRgn.has_value()) {
 			viewLocked->ConstrainClippingRegion(&fSurface->fState.opaqueRgn.value());
 			viewLocked->SetDrawingMode(B_OP_COPY);
-			viewLocked->DrawBitmap(bmp);
+			viewLocked->DrawBitmap(bmp, bitmapRect, viewRect, options);
 			BRegion remaining = viewLocked->Bounds();
 			remaining.Exclude(&fSurface->fState.opaqueRgn.value());
 			viewLocked->ConstrainClippingRegion(&remaining);
 		}
 		viewLocked->SetDrawingMode(mode);
-		const auto &viewportSrc = fSurface->fState.viewportSrc;
-		const auto &viewportDst = fSurface->fState.viewportDst;
-		if (viewportSrc.IsValid() && viewportDst.IsValid()) {
-			BRect bitmapRect(viewportSrc.x, viewportSrc.y, viewportSrc.x + viewportSrc.width - 1, viewportSrc.y + viewportSrc.height - 1);
-			BRect viewRect(0, 0, viewportDst.width - 1, viewportDst.height - 1);
-			viewLocked->DrawBitmap(bmp, bitmapRect, viewRect);
-		} else {
-			viewLocked->DrawBitmap(bmp);
-		}
+		viewLocked->DrawBitmap(bmp, bitmapRect, viewRect, options);
 	}
 
 	if (fSurface && fFramerateLimitDisabled)
@@ -308,7 +314,8 @@ BSize HaikuSurface::Size() const
 		return BSize(fState.viewportDst.width - 1, fState.viewportDst.height - 1);
 	}
 	if (Bitmap() != NULL) {
-		return BSize(Bitmap()->Bounds().Width(), Bitmap()->Bounds().Height());
+		const int32_t scale = BufferScale();
+		return BSize((Bitmap()->Bounds().Width() + 1) / scale - 1, (Bitmap()->Bounds().Height() + 1) / scale - 1);
 	}
 	return BSize(-1, -1);
 }
@@ -518,7 +525,10 @@ void HaikuSurface::HandleDamageBuffer(int32_t x, int32_t y, int32_t width, int32
 {
 	width = std::min(width, 1 << 24);
 	height = std::min(height, 1 << 24);
-	fDirty.Include(BRect(x, y, x + width - 1, y + height - 1));
+	// in buffer pixels: to surface coordinates, rounded outwards (the scale
+	// is the pending one if it changes in this commit)
+	const int32_t scale = fPendingFields & (1 << fieldScale) ? std::max(fPendingState.scale, 1) : BufferScale();
+	fDirty.Include(BRect(x / scale, y / scale, (x + width + scale - 1) / scale - 1, (y + height + scale - 1) / scale - 1));
 }
 
 void HaikuSurface::HandleOffset(int32_t x, int32_t y)

@@ -11,6 +11,8 @@
 #include <Window.h>
 #include <View.h>
 #include <Cursor.h>
+#include <Bitmap.h>
+#include <AutoDeleter.h>
 #include <Autolock.h>
 #include "AppKitPtrs.h"
 
@@ -203,6 +205,44 @@ void SurfaceCursorHook::HandleCommit()
 {
 	BBitmap *bitmap = Base()->Bitmap();
 	if (bitmap != NULL) {
+		// Cursors are in logical pixels: one drawn at a higher density is
+		// averaged down to its size in them (the hotspot already is).
+		const int32_t scale = Base()->BufferScale();
+		ObjectDeleter<BBitmap> scaled;
+		if (scale > 1 && (bitmap->ColorSpace() == B_RGBA32 || bitmap->ColorSpace() == B_RGB32)) {
+			const int32 width = (bitmap->Bounds().IntegerWidth() + 1) / scale;
+			const int32 height = (bitmap->Bounds().IntegerHeight() + 1) / scale;
+			if (width > 0 && height > 0)
+				scaled.SetTo(new(std::nothrow) BBitmap(BRect(0, 0, width - 1, height - 1), B_RGBA32));
+			if (scaled.IsSet() && scaled->InitCheck() == B_OK) {
+				const bool hasAlpha = bitmap->ColorSpace() == B_RGBA32;
+				const uint8 *src = (const uint8*)bitmap->Bits();
+				const int32 srcBpr = bitmap->BytesPerRow();
+				uint8 *dst = (uint8*)scaled->Bits();
+				const int32 dstBpr = scaled->BytesPerRow();
+				for (int32 y = 0; y < height; y++) {
+					for (int32 x = 0; x < width; x++) {
+						// with the alpha applied, so transparent pixels add nothing
+						uint32 sum[4] = {0, 0, 0, 0};
+						for (int32 j = 0; j < scale; j++) {
+							const uint8 *p = src + (y * scale + j) * srcBpr + x * scale * 4;
+							for (int32 i = 0; i < scale; i++, p += 4) {
+								const uint32 a = hasAlpha ? p[3] : 255;
+								sum[0] += p[0] * a;
+								sum[1] += p[1] * a;
+								sum[2] += p[2] * a;
+								sum[3] += a;
+							}
+						}
+						uint8 *d = dst + y * dstBpr + x * 4;
+						for (int32 c = 0; c < 3; c++)
+							d[c] = sum[3] == 0 ? 0 : (sum[c] + sum[3] / 2) / sum[3];
+						d[3] = (sum[3] + scale * scale / 2) / (scale * scale);
+					}
+				}
+				bitmap = scaled.Get();
+			}
+		}
 		BCursor cursor(bitmap, fHotspot);
 		AppKitPtrs::LockedPtr(be_app)->SetCursor(&cursor);
 	} else {

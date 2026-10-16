@@ -9,3 +9,5 @@ public:
 	virtual ~HaikuOutputGlobal() = default;
 	void Bind(struct wl_client *wl_client, uint32_t version, uint32_t id) override;
 };
+
+int32_t HaikuOutputScale();

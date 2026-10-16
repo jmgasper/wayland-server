@@ -117,6 +117,7 @@ public:
 
 	BView *View() const {return (BView*)fView;}
 	BBitmap *Bitmap() const {return fState.buffer == NULL ? NULL : &fState.buffer->Bitmap();}
+	int32_t BufferScale() const {return fState.scale > 1 ? fState.scale : 1;}
 	bool InputRgnContains(BPoint p) {return !fState.inputRgn ? true : fState.inputRgn->Contains(p);}
 	void GetOffset(int32_t &x, int32_t &y) const {x = fState.dx; y = fState.dy;}
 	BSize Size() const;
