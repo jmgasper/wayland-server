@@ -1,4 +1,5 @@
 #include "HaikuXdgSurface.h"
+#include "HaikuOutput.h"
 #include "HaikuXdgShell.h"
 #include "HaikuXdgToplevel.h"
 #include "HaikuXdgPopup.h"
@@ -101,6 +102,9 @@ void XdgSurfaceHook::HandleCommit()
 		}
 		fXdgSurface->Window()->Show();
 		fXdgSurface->fSurfaceInitalized = true;
+		// shown: on the outputs now, as a compositor says once a surface is
+		// mapped (earlier, Firefox took the scale for its initial size)
+		HaikuOutputsEnter(fXdgSurface->Surface());
 	}
 
 	if (fXdgSurface->fPopup != NULL) {

@@ -285,7 +285,6 @@ HaikuXdgToplevel *HaikuXdgToplevel::Create(HaikuXdgSurface *xdgSurface, uint32_t
 	xdgToplevel->fXdgSurface = xdgSurface;
 	xdgToplevel->fWindow = new WaylandWindow(xdgToplevel, BRect(), "", B_NO_BORDER_WINDOW_LOOK, B_NORMAL_WINDOW_FEEL, 0);
 	xdgSurface->fSurface->AttachWindow(xdgToplevel->fWindow);
-	HaikuOutputsEnter(xdgSurface->fSurface);
 
 	return xdgToplevel;
 }

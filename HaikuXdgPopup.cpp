@@ -1,5 +1,4 @@
 #include "HaikuXdgPopup.h"
-#include "HaikuOutput.h"
 #include "HaikuXdgSurface.h"
 #include "HaikuXdgPositioner.h"
 #include "WaylandEnv.h"
@@ -83,7 +82,6 @@ HaikuXdgPopup *HaikuXdgPopup::Create(HaikuXdgSurface *xdgSurface, uint32_t id, s
 	xdgPopup->fWindow = new WaylandPopupWindow(xdgPopup, BRect(), "", B_NO_BORDER_WINDOW_LOOK, B_FLOATING_SUBSET_WINDOW_FEEL, B_AVOID_FOCUS);
 	xdgSurface->Surface()->AttachWindow(xdgPopup->fWindow);
 	xdgSurface->Surface()->AttachViewsToEarlierSubsurfaces();
-	HaikuOutputsEnter(xdgSurface->Surface());
 	xdgPopup->fWindow->AddToSubset(xdgPopup->fXdgSurface->fRoot->Window());
 
 	return xdgPopup;
